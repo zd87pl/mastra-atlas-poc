@@ -1,0 +1,49 @@
+# WP Engine Atlas deployment configuration for Mastra Deep Research template
+name: mastra-deep-research
+type: nodejs:20
+
+# Build and deploy configuration
+build:
+  flavor: none
+
+# Web configuration
+web:
+  commands:
+    start: "npm start"
+  locations:
+    /:
+      root: "public"
+      passthru: true
+      index:
+        - "index.html"
+
+# Persistent storage for database and uploads
+disk: 2048
+
+mounts:
+  "/storage":
+    source: local
+    source_path: storage
+
+# Environment variables (set these in Atlas dashboard)
+variables:
+  env:
+    NODE_ENV: "production"
+
+# Dependencies and build process
+dependencies:
+  nodejs:
+    npm: "*"
+
+hooks:
+  build: |
+    npm ci --include=dev
+    npm run build
+  deploy: |
+    echo "Mastra Deep Research deployed successfully"
+
+# Health check
+health:
+  path: "/"
+  timeout: 30
+  interval: 10
