@@ -10,12 +10,12 @@ build:
 web:
   commands:
     start: "npm start"
+  upstream:
+    socket_family: tcp
+    protocol: http
   locations:
     /:
-      root: "public"
       passthru: true
-      index:
-        - "index.html"
 
 # Persistent storage for database and uploads
 disk: 2048

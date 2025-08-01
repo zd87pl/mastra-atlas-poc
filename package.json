@@ -5,8 +5,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "mastra dev",
-    "build": "mastra build",
-    "start": "mastra start"
+    "build": "next build",
+    "start": "next start",
+    "mastra:build": "mastra build",
+    "mastra:start": "mastra start"
   },
   "keywords": [],
   "author": "",
