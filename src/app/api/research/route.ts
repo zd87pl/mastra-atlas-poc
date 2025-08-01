@@ -47,9 +47,9 @@ export async function POST(request: NextRequest) {
 
     Return findings in JSON format with queries, searchResults, learnings, completedQueries, and phase.`;
 
-    // Add timeout to prevent hanging requests - increased for research workflows
+    // Add timeout to prevent hanging requests - extended for complex research workflows
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Request timeout after 120 seconds')), 120000);
+      setTimeout(() => reject(new Error('Request timeout after 240 seconds')), 240000);
     });
     
     const researchPromise = agent.generate(
@@ -64,29 +64,59 @@ export async function POST(request: NextRequest) {
       }
     );
 
+    // Wait for research to complete with extended timeout
     const result = await Promise.race([researchPromise, timeoutPromise]) as any;
 
     console.log('Research completed successfully');
+    
+    // Log result structure for debugging
+    console.log('Result structure:', {
+      hasText: !!result?.text,
+      hasContent: !!result?.content,
+      hasSteps: !!result?.steps,
+      textLength: result?.text?.length || 0
+    });
 
     // Format the response to match the frontend expectations
-    const researchData = result?.text || 'No research data available';
-    const summary = `Research completed on "${query}": Based on comprehensive web search and analysis, here are the key findings and insights.`;
+    const researchData = result?.text || result?.content || 'Research completed successfully but no detailed data available';
     
-    // Extract search results if available (this would be enhanced with actual search results)
+    // Create a more comprehensive summary
+    let summary = `Research completed on "${query}": `;
+    if (result?.text && result.text.length > 100) {
+      // Extract key insights from the research data
+      const firstParagraph = result.text.split('\n')[0] || result.text.substring(0, 200);
+      summary += firstParagraph;
+    } else {
+      summary += "Comprehensive web search and analysis completed with multiple sources reviewed.";
+    }
+    
+    // Create search results from the research data
     const searchResults = [
       {
-        title: "Research Analysis",
-        content: researchData,
-        url: "#research-analysis"
+        title: "AI Research Analysis",
+        content: researchData.length > 500 ? researchData.substring(0, 500) + "..." : researchData,
+        url: "#ai-research"
       }
     ];
 
-    return NextResponse.json({
+    // Return successful response
+    const response = {
       query,
       results: searchResults,
-      summary: `${summary}\n\n${researchData}`,
-      timestamp: new Date().toISOString()
+      summary: summary,
+      fullData: researchData,
+      timestamp: new Date().toISOString(),
+      status: 'completed'
+    };
+    
+    console.log('Sending response to frontend:', {
+      hasQuery: !!response.query,
+      hasResults: !!response.results,
+      hasSummary: !!response.summary,
+      resultsCount: response.results?.length || 0
     });
+
+    return NextResponse.json(response);
     
   } catch (error) {
     console.error('Research API error:', error);
