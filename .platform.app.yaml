@@ -14,11 +14,18 @@ web:
     socket_family: tcp
     protocol: http
     timeout: 300  # 5 minutes for long-running operations
+    keepalive_timeout: 300  # Keep connections alive for long operations
   locations:
     /:
       passthru: true
       request_timeout: 300  # 5 minutes for API requests
       response_timeout: 300  # 5 minutes for response
+      fastcgi_read_timeout: 300  # FastCGI timeout
+    /api:
+      passthru: true
+      request_timeout: 300  # Extended timeout for API routes
+      response_timeout: 300
+      fastcgi_read_timeout: 300
 
 # Persistent storage for database and uploads
 disk: 2048
