@@ -3,8 +3,19 @@ import { z } from 'zod';
 import Exa from 'exa-js';
 import 'dotenv/config';
 
-// Initialize Exa client
-const exa = new Exa(process.env.EXASEARCH_API_KEY);
+// Lazy initialization of Exa client to prevent startup crashes
+let exa: Exa | null = null;
+
+function getExaClient(): Exa {
+  if (!exa) {
+    const apiKey = process.env.EXASEARCH_API_KEY;
+    if (!apiKey) {
+      throw new Error('EXASEARCH_API_KEY environment variable is required');
+    }
+    exa = new Exa(apiKey);
+  }
+  return exa;
+}
 
 export const webSearchTool = createTool({
   id: 'web-search',
@@ -23,7 +34,8 @@ export const webSearchTool = createTool({
       }
 
       console.log(`Searching web for: "${query}"`);
-      const { results } = await exa.searchAndContents(query, {
+      const exaClient = getExaClient();
+      const { results } = await exaClient.searchAndContents(query, {
         livecrawl: 'always',
         numResults: 2,
       });
