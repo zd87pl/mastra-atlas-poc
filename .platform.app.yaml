@@ -13,9 +13,12 @@ web:
   upstream:
     socket_family: tcp
     protocol: http
+    timeout: 300  # 5 minutes for long-running operations
   locations:
     /:
       passthru: true
+      request_timeout: 300  # 5 minutes for API requests
+      response_timeout: 300  # 5 minutes for response
 
 # Persistent storage for database and uploads
 disk: 2048
