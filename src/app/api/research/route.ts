@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { mastra } from '@/mastra';
 
+// Configure route for long-running operations
+export const runtime = 'nodejs';
+export const maxDuration = 300; // 5 minutes for research operations
+
 export async function POST(request: NextRequest) {
   try {
     const { query } = await request.json();
@@ -43,9 +47,9 @@ export async function POST(request: NextRequest) {
 
     Return findings in JSON format with queries, searchResults, learnings, completedQueries, and phase.`;
 
-    // Add timeout to prevent hanging requests
+    // Add timeout to prevent hanging requests - increased for research workflows
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Request timeout after 25 seconds')), 25000);
+      setTimeout(() => reject(new Error('Request timeout after 120 seconds')), 120000);
     });
     
     const researchPromise = agent.generate(
@@ -56,7 +60,7 @@ export async function POST(request: NextRequest) {
         },
       ],
       {
-        maxSteps: 15,
+        maxSteps: 20, // Increased for thorough research
       }
     );
 
