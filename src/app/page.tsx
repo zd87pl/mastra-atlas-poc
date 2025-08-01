@@ -42,12 +42,57 @@ export default function Home() {
         throw new Error(`Research failed: ${response.status}`)
       }
 
-      const result = await response.json()
-      setResearchResult(result)
+      // Handle streaming response
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+
+      if (!reader) {
+        throw new Error('No response body available')
+      }
+
+      let buffer = ''
+      
+      while (true) {
+        const { done, value } = await reader.read()
+        
+        if (done) break
+        
+        buffer += decoder.decode(value, { stream: true })
+        
+        // Process complete messages
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || '' // Keep incomplete line in buffer
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              
+              switch (data.type) {
+                case 'status':
+                case 'progress':
+                  // Update loading state with progress message
+                  console.log('Progress:', data.message)
+                  break
+                  
+                case 'complete':
+                  // Set final result
+                  setResearchResult(data.data)
+                  setIsLoading(false)
+                  break
+                  
+                case 'error':
+                  throw new Error(data.message)
+              }
+            } catch (parseError) {
+              console.warn('Failed to parse SSE data:', line)
+            }
+          }
+        }
+      }
     } catch (error) {
       console.error('Research error:', error)
       setError(error instanceof Error ? error.message : 'Failed to conduct research')
-    } finally {
       setIsLoading(false)
     }
   }
