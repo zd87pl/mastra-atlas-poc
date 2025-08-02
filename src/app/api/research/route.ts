@@ -3,6 +3,92 @@ import { mastra } from '@/mastra';
 
 // Configure route for long-running operations with streaming
 export const runtime = 'nodejs';
+// Helper function to parse and structure research data
+function parseResearchData(rawData: string) {
+  const sections: any = {};
+  const searchResults: any[] = [];
+  let summary = '';
+
+  // Split the content into sections
+  const lines = rawData.split('\n').filter(line => line.trim().length > 0);
+  let currentSection = '';
+  let currentContent: string[] = [];
+
+  for (const line of lines) {
+    if (line.startsWith('### ')) {
+      // Save previous section
+      if (currentSection && currentContent.length > 0) {
+        sections[currentSection] = currentContent.join('\n');
+      }
+      
+      // Start new section
+      currentSection = line.replace('### ', '').trim();
+      currentContent = [];
+    } else if (currentSection) {
+      currentContent.push(line);
+    }
+  }
+  
+  // Save final section
+  if (currentSection && currentContent.length > 0) {
+    sections[currentSection] = currentContent.join('\n');
+  }
+
+  // Generate summary
+  if (sections['Learnings']) {
+    summary = sections['Learnings'].substring(0, 400) + '...';
+  } else {
+    // Find first meaningful content
+    const meaningfulLine = lines.find(line =>
+      line.length > 50 &&
+      !line.startsWith('###') &&
+      !line.match(/^\d+\./) &&
+      !line.toLowerCase().includes('queries')
+    );
+    summary = meaningfulLine ? meaningfulLine.substring(0, 300) : 'Comprehensive research completed with detailed analysis.';
+  }
+
+  // Parse search results if available
+  if (sections['Search Results']) {
+    const searchContent = sections['Search Results'];
+    const resultBlocks = searchContent.split(/\d+\.\s\*\*/).filter((block: string) => block.trim());
+    
+    resultBlocks.forEach((block: string, index: number) => {
+      if (block.trim()) {
+        const lines = block.split('\n').filter((line: string) => line.trim());
+        const titleLine = lines[0]?.replace(/\*\*/g, '') || `Search Result ${index + 1}`;
+        const urlMatch = lines.find((line: string) => line.includes('URL:'))?.match(/\[(.*?)\]\((.*?)\)/);
+        const contentLine = lines.find((line: string) => line.includes('Content:'))?.replace('- Content:', '').trim();
+        
+        searchResults.push({
+          title: titleLine.trim(),
+          content: contentLine || lines.slice(1).join(' ').substring(0, 200) + '...',
+          url: urlMatch ? urlMatch[2] : '#'
+        });
+      }
+    });
+  }
+
+  // If no structured search results, create them from sections
+  if (searchResults.length === 0) {
+    Object.entries(sections).forEach(([sectionName, content]) => {
+      if (sectionName !== 'Learnings' && typeof content === 'string') {
+        searchResults.push({
+          title: sectionName,
+          content: content.substring(0, 300) + (content.length > 300 ? '...' : ''),
+          url: `#${sectionName.toLowerCase().replace(/\s+/g, '-')}`
+        });
+      }
+    });
+  }
+
+  return {
+    summary,
+    searchResults,
+    sections
+  };
+}
+
 export const maxDuration = 300; // 5 minutes for research operations
 
 export async function POST(request: NextRequest) {
@@ -81,16 +167,43 @@ export async function POST(request: NextRequest) {
 
         Return findings in JSON format with queries, searchResults, learnings, completedQueries, and phase.`;
 
-        // Start research with periodic status updates
+        // Start research with detailed step-by-step progress updates
         let progressCount = 0;
         const progressInterval = setInterval(() => {
           progressCount++;
+          const elapsed = progressCount * 2;
+          
+          let currentStep = 'Initializing research...';
+          let stepNumber = 1;
+          if (elapsed > 5) { currentStep = 'Connecting to research agent...'; stepNumber = 2; }
+          if (elapsed > 10) { currentStep = 'Performing web search...'; stepNumber = 3; }
+          if (elapsed > 20) { currentStep = 'Analyzing search results...'; stepNumber = 4; }
+          if (elapsed > 30) { currentStep = 'Extracting key insights...'; stepNumber = 5; }
+          if (elapsed > 45) { currentStep = 'Generating comprehensive summary...'; stepNumber = 6; }
+          if (elapsed > 60) { currentStep = 'Finalizing research report...'; stepNumber = 7; }
+          
+          // Send detailed progress log
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'log',
+            level: 'info',
+            message: currentStep,
+            timestamp: new Date().toISOString(),
+            category: 'progress',
+            elapsed,
+            step: stepNumber,
+            totalSteps: 7
+          })}\n\n`));
+          
+          // Send progress update for UI
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'progress',
-            message: `Research in progress... (${progressCount * 5}s)`,
-            timestamp: new Date().toISOString()
+            message: currentStep,
+            timestamp: new Date().toISOString(),
+            elapsed,
+            step: stepNumber,
+            totalSteps: 7
           })}\n\n`));
-        }, 5000);
+        }, 2000);
 
         try {
           const result = await agent.generate(

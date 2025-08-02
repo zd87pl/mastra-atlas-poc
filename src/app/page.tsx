@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, Send, Copy, CheckCircle, FileText, ExternalLink } from 'lucide-react'
+import { Search, Send, Copy, CheckCircle, FileText, ExternalLink, Clock, Activity, CheckCircle2, AlertCircle } from 'lucide-react'
 
 interface ResearchResult {
   query: string
@@ -14,12 +14,26 @@ interface ResearchResult {
   timestamp: string
 }
 
+interface LogEntry {
+  type: 'log' | 'status' | 'progress'
+  level?: 'info' | 'success' | 'error' | 'warning'
+  message: string
+  timestamp: string
+  category?: string
+  details?: any
+  step?: number
+  totalSteps?: number
+  elapsed?: number
+}
+
 export default function Home() {
   const [query, setQuery] = useState('')
   const [researchResult, setResearchResult] = useState<ResearchResult | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState('')
+  const [logs, setLogs] = useState<LogEntry[]>([])
+  const [currentStep, setCurrentStep] = useState<{step: number, totalSteps: number, message: string} | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,6 +42,8 @@ export default function Home() {
     setIsLoading(true)
     setError('')
     setResearchResult(null)
+    setLogs([])
+    setCurrentStep(null)
     
     try {
       const response = await fetch('/api/research', {
@@ -70,19 +86,38 @@ export default function Home() {
               
               switch (data.type) {
                 case 'status':
+                case 'log':
+                  // Add log entry
+                  setLogs(prev => [...prev, data as LogEntry]);
+                  break;
+                  
                 case 'progress':
-                  // Update loading state with progress message
-                  console.log('Progress:', data.message)
-                  break
+                  // Update progress and add log entry
+                  setLogs(prev => [...prev, data as LogEntry]);
+                  if (data.step && data.totalSteps) {
+                    setCurrentStep({
+                      step: data.step,
+                      totalSteps: data.totalSteps,
+                      message: data.message
+                    });
+                  }
+                  break;
                   
                 case 'complete':
                   // Set final result
-                  setResearchResult(data.data)
-                  setIsLoading(false)
-                  break
+                  setResearchResult(data.data);
+                  setIsLoading(false);
+                  setLogs(prev => [...prev, {
+                    type: 'log',
+                    level: 'success',
+                    message: 'Research completed successfully!',
+                    timestamp: new Date().toISOString(),
+                    category: 'system'
+                  }]);
+                  break;
                   
                 case 'error':
-                  throw new Error(data.message)
+                  throw new Error(data.message);
               }
             } catch (parseError) {
               console.warn('Failed to parse SSE data:', line)
@@ -91,9 +126,17 @@ export default function Home() {
         }
       }
     } catch (error) {
-      console.error('Research error:', error)
-      setError(error instanceof Error ? error.message : 'Failed to conduct research')
-      setIsLoading(false)
+      console.error('Research error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to conduct research';
+      setError(errorMessage);
+      setLogs(prev => [...prev, {
+        type: 'log',
+        level: 'error',
+        message: errorMessage,
+        timestamp: new Date().toISOString(),
+        category: 'system'
+      }]);
+      setIsLoading(false);
     }
   }
 
@@ -148,19 +191,125 @@ export default function Home() {
               ) : (
                 <Send className="h-4 w-4" />
               )}
-              {isLoading ? 'Researching...' : 'Start Research'}
+              {isLoading ? (
+                currentStep ? 
+                  `${currentStep.message.substring(0, 30)}...` : 
+                  'Researching...'
+              ) : 'Start Research'}
             </button>
           </form>
         </div>
+
+        {/* Progress Section */}
+        {isLoading && currentStep && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-blue-900 flex items-center gap-2">
+                <Activity className="h-5 w-5 animate-pulse" />
+                Research Progress
+              </h3>
+              <span className="text-sm text-blue-700 bg-blue-100 px-2 py-1 rounded">
+                Step {currentStep.step} of {currentStep.totalSteps}
+              </span>
+            </div>
+            
+            {/* Progress Bar */}
+            <div className="mb-4">
+              <div className="flex justify-between text-sm text-blue-700 mb-2">
+                <span>{currentStep.message}</span>
+                <span>{Math.round((currentStep.step / currentStep.totalSteps) * 100)}%</span>
+              </div>
+              <div className="w-full bg-blue-200 rounded-full h-2">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-500 ease-out"
+                  style={{ width: `${(currentStep.step / currentStep.totalSteps) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Real-time Logs Section */}
+        {(isLoading || logs.length > 0) && (
+          <div className="bg-gray-900 rounded-lg p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-100 flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Runtime Logs
+              </h3>
+              <span className="text-xs text-gray-400">
+                {logs.length} entries
+              </span>
+            </div>
+            
+            <div className="max-h-64 overflow-y-auto space-y-1 font-mono text-xs">
+              {logs.map((log, index) => (
+                <div key={index} className="flex items-start gap-2 py-1">
+                  <span className="text-gray-500 flex-shrink-0">
+                    {new Date(log.timestamp).toLocaleTimeString()}
+                  </span>
+                  
+                  {/* Log Level Icon */}
+                  <div className="flex-shrink-0 mt-0.5">
+                    {log.level === 'success' && (
+                      <CheckCircle2 className="h-3 w-3 text-green-400" />
+                    )}
+                    {log.level === 'error' && (
+                      <AlertCircle className="h-3 w-3 text-red-400" />
+                    )}
+                    {log.level === 'info' && (
+                      <div className="h-3 w-3 rounded-full bg-blue-400" />
+                    )}
+                    {!log.level && (
+                      <div className="h-3 w-3 rounded-full bg-gray-400" />
+                    )}
+                  </div>
+                  
+                  {/* Category */}
+                  {log.category && (
+                    <span className={`px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
+                      log.category === 'system' ? 'bg-purple-900 text-purple-200' :
+                      log.category === 'agent' ? 'bg-blue-900 text-blue-200' :
+                      log.category === 'progress' ? 'bg-green-900 text-green-200' :
+                      'bg-gray-800 text-gray-300'
+                    }`}>
+                      {log.category}
+                    </span>
+                  )}
+                  
+                  {/* Message */}
+                  <span className={`${
+                    log.level === 'success' ? 'text-green-300' :
+                    log.level === 'error' ? 'text-red-300' :
+                    log.level === 'info' ? 'text-blue-300' :
+                    'text-gray-300'
+                  }`}>
+                    {log.message}
+                  </span>
+                </div>
+              ))}
+              
+              {isLoading && (
+                <div className="flex items-center gap-2 py-1 text-gray-400">
+                  <span className="text-gray-500">
+                    {new Date().toLocaleTimeString()}
+                  </span>
+                  <div className="flex-shrink-0 mt-0.5">
+                    <div className="h-3 w-3 rounded-full bg-yellow-400 animate-pulse" />
+                  </div>
+                  <span className="text-yellow-300">Research in progress...</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Error Section */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <div className="flex">
               <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
+                <AlertCircle className="h-5 w-5 text-red-400" />
               </div>
               <div className="ml-3">
                 <p className="text-sm text-red-800">{error}</p>
@@ -241,16 +390,27 @@ export default function Home() {
         {/* Examples Section */}
         <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
           <h3 className="text-lg font-semibold text-blue-900 mb-3">Example Research Questions</h3>
-          <div className="space-y-2 text-sm">
+          <div className="space-y-3 text-sm">
             <p className="text-blue-800">
               <strong>Try these research topics:</strong>
             </p>
-            <ul className="list-disc list-inside text-blue-700 space-y-1">
-              <li>"What are the latest developments in renewable energy technology?"</li>
-              <li>"How is artificial intelligence being used in healthcare in 2024?"</li>
-              <li>"What are the current trends in remote work and digital collaboration?"</li>
-              <li>"What are the recent breakthroughs in quantum computing?"</li>
-            </ul>
+            <div className="grid md:grid-cols-2 gap-2">
+              {[
+                "What are the latest developments in renewable energy technology?",
+                "How is artificial intelligence being used in healthcare in 2024?",
+                "What are the current trends in remote work and digital collaboration?",
+                "What are the recent breakthroughs in quantum computing?"
+              ].map((example, index) => (
+                <button
+                  key={index}
+                  onClick={() => setQuery(example)}
+                  className="text-left p-2 text-blue-700 hover:text-blue-900 hover:bg-blue-100 rounded border border-blue-200 transition-colors text-xs"
+                  disabled={isLoading}
+                >
+                  "{example}"
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
