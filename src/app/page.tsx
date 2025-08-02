@@ -436,10 +436,29 @@ export default function Home() {
                                   <CheckCircle className="h-4 w-4 text-green-600" />
                                   Key Insights ({parsedContent.learnings.length})
                                 </h5>
-                                <ul className="space-y-2">
-                                  {parsedContent.learnings.map((learning: string, idx: number) => (
-                                    <li key={idx} className="bg-green-50 p-3 rounded border-l-4 border-green-400">
-                                      <p className="text-gray-700 text-sm leading-relaxed">{learning}</p>
+                                <ul className="space-y-3">
+                                  {parsedContent.learnings.map((learning: any, idx: number) => (
+                                    <li key={idx} className="bg-green-50 p-4 rounded-lg border-l-4 border-green-400">
+                                      {/* Main learning */}
+                                      <p className="text-gray-700 text-sm leading-relaxed mb-2">
+                                        {typeof learning === 'string' ? learning : learning.learning}
+                                      </p>
+                                      
+                                      {/* Follow-up questions if present */}
+                                      {learning.followUpQuestions && Array.isArray(learning.followUpQuestions) && learning.followUpQuestions.length > 0 && (
+                                        <div className="mt-3 pt-3 border-t border-green-200">
+                                          <h6 className="text-xs font-medium text-green-700 mb-2 uppercase tracking-wide">
+                                            Follow-up Questions:
+                                          </h6>
+                                          <ul className="space-y-1">
+                                            {learning.followUpQuestions.map((question: string, qIdx: number) => (
+                                              <li key={qIdx} className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded italic">
+                                                "{question}"
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      )}
                                     </li>
                                   ))}
                                 </ul>
@@ -462,6 +481,43 @@ export default function Home() {
                                       {query}
                                     </span>
                                   ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Display research phase and completion status */}
+                            {(parsedContent.phase || parsedContent.completedQueries) && (
+                              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                <div className="flex items-start justify-between">
+                                  <div>
+                                    {parsedContent.phase && (
+                                      <div className="mb-2">
+                                        <span className="inline-block bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium uppercase tracking-wide">
+                                          Phase: {parsedContent.phase}
+                                        </span>
+                                      </div>
+                                    )}
+                                    
+                                    {parsedContent.completedQueries && Array.isArray(parsedContent.completedQueries) && (
+                                      <div>
+                                        <h6 className="text-sm font-medium text-blue-900 mb-2">
+                                          Research Progress: {parsedContent.completedQueries.length} queries completed
+                                        </h6>
+                                        <div className="w-full bg-blue-200 rounded-full h-2">
+                                          <div
+                                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                                            style={{
+                                              width: parsedContent.queries ?
+                                                `${Math.round((parsedContent.completedQueries.length / parsedContent.queries.length) * 100)}%` :
+                                                '100%'
+                                            }}
+                                          ></div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                  
+                                  <CheckCircle className="h-5 w-5 text-blue-600 flex-shrink-0" />
                                 </div>
                               </div>
                             )}

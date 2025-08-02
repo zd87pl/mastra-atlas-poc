@@ -89,12 +89,22 @@ mastra-deep-research/
 
 ## 🌐 WP Engine Atlas Deployment
 
-### Method 1: Direct from Mastra.ai (Recommended)
+### Method 1: Create from Template (Recommended)
 
-1. **Visit the Mastra.ai template page**: https://mastra.ai/templates/deep-research
-2. **Click "Deploy to WP Engine"** button
-3. **Connect your Atlas account** when prompted
-4. **Follow the deployment wizard** to complete setup
+1. **Create project from template**:
+   ```bash
+   npx create-mastra@latest --template deep-research my-research-app
+   cd my-research-app
+   ```
+
+2. **Initialize Git repository**:
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial commit with Mastra deep research template"
+   ```
+
+3. **Follow Method 2 steps below** for Atlas deployment
 
 ### Method 2: Manual Git Deployment
 
