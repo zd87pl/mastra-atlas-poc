@@ -353,34 +353,144 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Sources */}
+            {/* Enhanced Sources */}
             {researchResult.results && researchResult.results.length > 0 && (
               <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Sources & References</h3>
-                <div className="space-y-4">
-                  {researchResult.results.map((result, index) => (
-                    <div key={index} className="border-l-4 border-blue-200 pl-4 py-2">
-                      <div className="flex items-start justify-between">
-                        <h4 className="font-medium text-gray-900 mb-2">{result.title}</h4>
-                        {result.url && (
-                          <a
-                            href={result.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 ml-4 flex-shrink-0"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </a>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Research Results</h3>
+                <div className="space-y-6">
+                  {researchResult.results.map((result, index) => {
+                    // Try to parse JSON content for better formatting
+                    let parsedContent = null;
+                    try {
+                      if (result.content.trim().startsWith('{') || result.content.trim().startsWith('[')) {
+                        parsedContent = JSON.parse(result.content);
+                      }
+                    } catch (e) {
+                      // Not JSON, keep as regular content
+                    }
+
+                    return (
+                      <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                        <div className="flex items-start justify-between mb-3">
+                          <h4 className="font-semibold text-gray-900 text-lg">{result.title}</h4>
+                          {result.url && result.url !== '#comprehensive-research' && !result.url.startsWith('#research-step') && (
+                            <a
+                              href={result.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 ml-4 flex-shrink-0 flex items-center gap-1"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                              <span className="text-sm">View Source</span>
+                            </a>
+                          )}
+                        </div>
+
+                        {/* Display parsed JSON content in structured format */}
+                        {parsedContent ? (
+                          <div className="space-y-4">
+                            {/* Display search results */}
+                            {parsedContent.searchResults && Array.isArray(parsedContent.searchResults) && (
+                              <div>
+                                <h5 className="font-medium text-gray-800 mb-2 flex items-center gap-2">
+                                  <Search className="h-4 w-4" />
+                                  Search Results ({parsedContent.searchResults.length})
+                                </h5>
+                                <div className="space-y-3">
+                                  {parsedContent.searchResults.map((searchResult: any, idx: number) => (
+                                    <div key={idx} className="bg-white p-3 rounded border border-gray-200">
+                                      <div className="flex items-start justify-between mb-2">
+                                        <h6 className="font-medium text-blue-900">{searchResult.title}</h6>
+                                        {searchResult.url && (
+                                          <a
+                                            href={searchResult.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-blue-600 hover:text-blue-800 ml-2 flex-shrink-0"
+                                          >
+                                            <ExternalLink className="h-3 w-3" />
+                                          </a>
+                                        )}
+                                      </div>
+                                      <p className="text-gray-600 text-sm leading-relaxed mb-2">{searchResult.content}</p>
+                                      {searchResult.url && (
+                                        <a
+                                          href={searchResult.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-xs text-blue-600 hover:text-blue-800 break-all"
+                                        >
+                                          {searchResult.url}
+                                        </a>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Display key learnings */}
+                            {parsedContent.learnings && Array.isArray(parsedContent.learnings) && (
+                              <div>
+                                <h5 className="font-medium text-gray-800 mb-2 flex items-center gap-2">
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                  Key Insights ({parsedContent.learnings.length})
+                                </h5>
+                                <ul className="space-y-2">
+                                  {parsedContent.learnings.map((learning: string, idx: number) => (
+                                    <li key={idx} className="bg-green-50 p-3 rounded border-l-4 border-green-400">
+                                      <p className="text-gray-700 text-sm leading-relaxed">{learning}</p>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {/* Display queries */}
+                            {parsedContent.queries && Array.isArray(parsedContent.queries) && (
+                              <div>
+                                <h5 className="font-medium text-gray-800 mb-2 flex items-center gap-2">
+                                  <Search className="h-4 w-4 text-purple-600" />
+                                  Research Queries ({parsedContent.queries.length})
+                                </h5>
+                                <div className="flex flex-wrap gap-2">
+                                  {parsedContent.queries.map((query: string, idx: number) => (
+                                    <span
+                                      key={idx}
+                                      className="inline-block bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium"
+                                    >
+                                      {query}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          /* Display regular content with markdown-like formatting */
+                          <div className="prose max-w-none">
+                            <div className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
+                              {result.content}
+                            </div>
+                          </div>
+                        )}
+
+                        {result.url && result.url !== '#comprehensive-research' && !result.url.startsWith('#research-step') && (
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <span className="text-xs text-gray-500">Source: </span>
+                            <a
+                              href={result.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-600 hover:text-blue-800 break-all"
+                            >
+                              {result.url}
+                            </a>
+                          </div>
                         )}
                       </div>
-                      <p className="text-gray-600 text-sm leading-relaxed">{result.content}</p>
-                      {result.url && (
-                        <div className="mt-2">
-                          <span className="text-xs text-gray-500 break-all">{result.url}</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

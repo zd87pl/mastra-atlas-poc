@@ -292,4 +292,3 @@ This project is based on the Mastra.ai deep research template and is suitable fo
 
 ---
 
-**Ready to deploy?** Visit [Mastra.ai](https://mastra.ai/templates/deep-research) and click "Deploy to WP Engine" for the fastest setup!
