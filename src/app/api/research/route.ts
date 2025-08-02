@@ -116,24 +116,71 @@ export async function POST(request: NextRequest) {
             timestamp: new Date().toISOString()
           })}\n\n`));
 
-          // Process and send results
+          // Process and send results - extract full research data
           const researchData = result?.text || 'Research completed successfully but no detailed data available';
           
+          console.log('Full research result:', {
+            text: result?.text?.substring(0, 200) + '...',
+            textLength: result?.text?.length,
+            hasSteps: !!result?.steps,
+            stepsCount: result?.steps?.length
+          });
+          
+          // Try to extract more comprehensive research data
+          let fullResearchContent = researchData;
+          
+          // If the research data seems to be truncated, try to get more complete content
+          if (result?.steps && Array.isArray(result.steps)) {
+            const stepContents = result.steps
+              .map(step => step.text || '')
+              .filter(content => content.length > 0)
+              .join('\n\n');
+            
+            if (stepContents.length > fullResearchContent.length) {
+              fullResearchContent = stepContents;
+            }
+          }
+          
+          // Create a comprehensive summary from the research
           let summary = `Research completed on "${query}": `;
-          if (result?.text && result.text.length > 100) {
-            const firstParagraph = result.text.split('\n')[0] || result.text.substring(0, 200);
-            summary += firstParagraph;
+          
+          // Extract meaningful insights from the research data
+          const lines = fullResearchContent.split('\n').filter(line => line.trim().length > 0);
+          if (lines.length > 0) {
+            // Find the first substantial line that's not just a query
+            const meaningfulLine = lines.find(line =>
+              line.length > 50 &&
+              !line.startsWith('###') &&
+              !line.match(/^\d+\./) &&
+              !line.toLowerCase().includes('queries')
+            ) || lines[0];
+            
+            summary += meaningfulLine.substring(0, 300);
           } else {
             summary += "Comprehensive web search and analysis completed with multiple sources reviewed.";
           }
           
+          // Create detailed search results with full content
           const searchResults = [
             {
-              title: "AI Research Analysis",
-              content: researchData.length > 500 ? researchData.substring(0, 500) + "..." : researchData,
-              url: "#ai-research"
+              title: "Comprehensive Research Analysis",
+              content: fullResearchContent,
+              url: "#comprehensive-research"
             }
           ];
+          
+          // If we have step-by-step data, add individual results
+          if (result?.steps && Array.isArray(result.steps)) {
+            result.steps.forEach((step, index) => {
+              if (step.text && step.text.length > 100) {
+                searchResults.push({
+                  title: `Research Step ${index + 1}`,
+                  content: step.text,
+                  url: `#research-step-${index + 1}`
+                });
+              }
+            });
+          }
 
           // Send final results
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({
