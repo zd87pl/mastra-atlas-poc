@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, Send, Copy, CheckCircle, FileText, ExternalLink, Clock, Activity, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Search, Send, Copy, CheckCircle, FileText, ExternalLink, Clock, Activity, CheckCircle2, AlertCircle, Eye, Code, MessageSquare } from 'lucide-react'
 
 interface ResearchResult {
   query: string
@@ -34,6 +34,7 @@ export default function Home() {
   const [error, setError] = useState('')
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [currentStep, setCurrentStep] = useState<{step: number, totalSteps: number, message: string} | null>(null)
+  const [viewMode, setViewMode] = useState<'formatted' | 'raw'>('formatted')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -147,6 +148,42 @@ export default function Home() {
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
       console.error('Failed to copy text: ', err)
+    }
+  }
+
+  // Enhanced JSON extraction function
+  const extractJsonFromContent = (content: string) => {
+    try {
+      // First try direct JSON parsing
+      if (content.trim().startsWith('{') || content.trim().startsWith('[')) {
+        return JSON.parse(content);
+      }
+      
+      // Look for JSON code blocks
+      const jsonMatch = content.match(/```json\s*\n([\s\S]*?)\n```/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[1]);
+      }
+      
+      // Look for JSON after a title or within code blocks
+      const codeBlockMatch = content.match(/```\s*\n([\s\S]*?)\n```/);
+      if (codeBlockMatch) {
+        try {
+          return JSON.parse(codeBlockMatch[1]);
+        } catch (e) {
+          // Not valid JSON in code block
+        }
+      }
+      
+      // Look for standalone JSON objects in content
+      const jsonObjectMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonObjectMatch) {
+        return JSON.parse(jsonObjectMatch[0]);
+      }
+      
+      return null;
+    } catch (e) {
+      return null;
     }
   }
 
@@ -318,7 +355,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Results Section */}
+        {/* Enhanced Results Section with Chatbot-like UX */}
         {researchResult && (
           <div className="space-y-6">
             {/* Summary */}
@@ -353,21 +390,47 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Enhanced Sources */}
+            {/* Chat-like Results with View Toggle */}
             {researchResult.results && researchResult.results.length > 0 && (
-              <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Research Results</h3>
-                <div className="space-y-6">
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+                {/* Header with View Toggle */}
+                <div className="p-6 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <MessageSquare className="h-5 w-5" />
+                      Research Analysis
+                    </h3>
+                    <div className="flex items-center gap-2 bg-gray-100 rounded-md p-1">
+                      <button
+                        onClick={() => setViewMode('formatted')}
+                        className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                          viewMode === 'formatted' 
+                            ? 'bg-white text-blue-600 shadow-sm' 
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        <Eye className="h-4 w-4 inline mr-1" />
+                        Formatted
+                      </button>
+                      <button
+                        onClick={() => setViewMode('raw')}
+                        className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                          viewMode === 'raw' 
+                            ? 'bg-white text-blue-600 shadow-sm' 
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        <Code className="h-4 w-4 inline mr-1" />
+                        Raw JSON
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Results Content */}
+                <div className="p-6 space-y-6">
                   {researchResult.results.map((result, index) => {
-                    // Try to parse JSON content for better formatting
-                    let parsedContent = null;
-                    try {
-                      if (result.content.trim().startsWith('{') || result.content.trim().startsWith('[')) {
-                        parsedContent = JSON.parse(result.content);
-                      }
-                    } catch (e) {
-                      // Not JSON, keep as regular content
-                    }
+                    const parsedContent = extractJsonFromContent(result.content);
 
                     return (
                       <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
@@ -386,21 +449,41 @@ export default function Home() {
                           )}
                         </div>
 
-                        {/* Display parsed JSON content in structured format */}
-                        {parsedContent ? (
+                        {/* Display content based on view mode */}
+                        {viewMode === 'formatted' && parsedContent ? (
                           <div className="space-y-4">
-                            {/* Display search results */}
-                            {parsedContent.searchResults && Array.isArray(parsedContent.searchResults) && (
-                              <div>
-                                <h5 className="font-medium text-gray-800 mb-2 flex items-center gap-2">
+                            {/* Research Queries */}
+                            {parsedContent.queries && Array.isArray(parsedContent.queries) && (
+                              <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                                <h5 className="font-medium text-purple-900 mb-3 flex items-center gap-2">
                                   <Search className="h-4 w-4" />
-                                  Search Results ({parsedContent.searchResults.length})
+                                  Research Queries ({parsedContent.queries.length})
+                                </h5>
+                                <div className="flex flex-wrap gap-2">
+                                  {parsedContent.queries.map((query: string, idx: number) => (
+                                    <span
+                                      key={idx}
+                                      className="inline-block bg-purple-100 text-purple-800 px-3 py-1.5 rounded-full text-sm font-medium"
+                                    >
+                                      {query}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Search Results */}
+                            {parsedContent.searchResults && Array.isArray(parsedContent.searchResults) && (
+                              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                <h5 className="font-medium text-blue-900 mb-3 flex items-center gap-2">
+                                  <Search className="h-4 w-4" />
+                                  Sources Found ({parsedContent.searchResults.length})
                                 </h5>
                                 <div className="space-y-3">
                                   {parsedContent.searchResults.map((searchResult: any, idx: number) => (
-                                    <div key={idx} className="bg-white p-3 rounded border border-gray-200">
+                                    <div key={idx} className="bg-white p-4 rounded-lg border border-blue-200 shadow-sm">
                                       <div className="flex items-start justify-between mb-2">
-                                        <h6 className="font-medium text-blue-900">{searchResult.title}</h6>
+                                        <h6 className="font-medium text-blue-900 text-base">{searchResult.title}</h6>
                                         {searchResult.url && (
                                           <a
                                             href={searchResult.url}
@@ -408,17 +491,17 @@ export default function Home() {
                                             rel="noopener noreferrer"
                                             className="text-blue-600 hover:text-blue-800 ml-2 flex-shrink-0"
                                           >
-                                            <ExternalLink className="h-3 w-3" />
+                                            <ExternalLink className="h-4 w-4" />
                                           </a>
                                         )}
                                       </div>
-                                      <p className="text-gray-600 text-sm leading-relaxed mb-2">{searchResult.content}</p>
+                                      <p className="text-gray-700 text-sm leading-relaxed mb-3">{searchResult.content}</p>
                                       {searchResult.url && (
                                         <a
                                           href={searchResult.url}
                                           target="_blank"
                                           rel="noopener noreferrer"
-                                          className="text-xs text-blue-600 hover:text-blue-800 break-all"
+                                          className="text-xs text-blue-600 hover:text-blue-800 break-all font-mono bg-blue-50 px-2 py-1 rounded"
                                         >
                                           {searchResult.url}
                                         </a>
@@ -429,105 +512,92 @@ export default function Home() {
                               </div>
                             )}
 
-                            {/* Display key learnings */}
+                            {/* Key Insights */}
                             {parsedContent.learnings && Array.isArray(parsedContent.learnings) && (
-                              <div>
-                                <h5 className="font-medium text-gray-800 mb-2 flex items-center gap-2">
-                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                                <h5 className="font-medium text-green-900 mb-3 flex items-center gap-2">
+                                  <CheckCircle className="h-4 w-4" />
                                   Key Insights ({parsedContent.learnings.length})
                                 </h5>
-                                <ul className="space-y-3">
+                                <div className="space-y-3">
                                   {parsedContent.learnings.map((learning: any, idx: number) => (
-                                    <li key={idx} className="bg-green-50 p-4 rounded-lg border-l-4 border-green-400">
-                                      {/* Main learning */}
+                                    <div key={idx} className="bg-white p-4 rounded-lg border-l-4 border-green-400 shadow-sm">
                                       <p className="text-gray-700 text-sm leading-relaxed mb-2">
                                         {typeof learning === 'string' ? learning : learning.learning}
                                       </p>
                                       
-                                      {/* Follow-up questions if present */}
                                       {learning.followUpQuestions && Array.isArray(learning.followUpQuestions) && learning.followUpQuestions.length > 0 && (
                                         <div className="mt-3 pt-3 border-t border-green-200">
                                           <h6 className="text-xs font-medium text-green-700 mb-2 uppercase tracking-wide">
-                                            Follow-up Questions:
+                                            💡 Follow-up Questions:
                                           </h6>
-                                          <ul className="space-y-1">
+                                          <div className="space-y-1">
                                             {learning.followUpQuestions.map((question: string, qIdx: number) => (
-                                              <li key={qIdx} className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded italic">
+                                              <div key={qIdx} className="text-xs text-green-600 bg-green-100 px-3 py-2 rounded-lg italic">
                                                 "{question}"
-                                              </li>
+                                              </div>
                                             ))}
-                                          </ul>
+                                          </div>
                                         </div>
                                       )}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-
-                            {/* Display queries */}
-                            {parsedContent.queries && Array.isArray(parsedContent.queries) && (
-                              <div>
-                                <h5 className="font-medium text-gray-800 mb-2 flex items-center gap-2">
-                                  <Search className="h-4 w-4 text-purple-600" />
-                                  Research Queries ({parsedContent.queries.length})
-                                </h5>
-                                <div className="flex flex-wrap gap-2">
-                                  {parsedContent.queries.map((query: string, idx: number) => (
-                                    <span
-                                      key={idx}
-                                      className="inline-block bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium"
-                                    >
-                                      {query}
-                                    </span>
+                                    </div>
                                   ))}
                                 </div>
                               </div>
                             )}
 
-                            {/* Display research phase and completion status */}
+                            {/* Research Progress */}
                             {(parsedContent.phase || parsedContent.completedQueries) && (
-                              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                              <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
                                 <div className="flex items-start justify-between">
-                                  <div>
+                                  <div className="flex-1">
                                     {parsedContent.phase && (
-                                      <div className="mb-2">
-                                        <span className="inline-block bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium uppercase tracking-wide">
-                                          Phase: {parsedContent.phase}
+                                      <div className="mb-3">
+                                        <span className="inline-block bg-indigo-600 text-white px-3 py-1 rounded-full text-sm font-medium uppercase tracking-wide">
+                                          📊 Phase: {parsedContent.phase}
                                         </span>
                                       </div>
                                     )}
                                     
                                     {parsedContent.completedQueries && Array.isArray(parsedContent.completedQueries) && (
                                       <div>
-                                        <h6 className="text-sm font-medium text-blue-900 mb-2">
-                                          Research Progress: {parsedContent.completedQueries.length} queries completed
+                                        <h6 className="text-sm font-medium text-indigo-900 mb-2">
+                                          Progress: {parsedContent.completedQueries.length} of {parsedContent.queries?.length || 'N/A'} queries completed
                                         </h6>
-                                        <div className="w-full bg-blue-200 rounded-full h-2">
-                                          <div
-                                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                                            style={{
-                                              width: parsedContent.queries ?
-                                                `${Math.round((parsedContent.completedQueries.length / parsedContent.queries.length) * 100)}%` :
-                                                '100%'
+                                        <div className="w-full bg-indigo-200 rounded-full h-3">
+                                          <div 
+                                            className="bg-indigo-600 h-3 rounded-full transition-all duration-300"
+                                            style={{ 
+                                              width: parsedContent.queries ? 
+                                                `${Math.round((parsedContent.completedQueries.length / parsedContent.queries.length) * 100)}%` : 
+                                                '100%' 
                                             }}
                                           ></div>
+                                        </div>
+                                        <div className="text-xs text-indigo-700 mt-1">
+                                          {parsedContent.queries ? 
+                                            `${Math.round((parsedContent.completedQueries.length / parsedContent.queries.length) * 100)}% complete` :
+                                            'Complete'
+                                          }
                                         </div>
                                       </div>
                                     )}
                                   </div>
                                   
-                                  <CheckCircle className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                                  <CheckCircle className="h-6 w-6 text-indigo-600 flex-shrink-0 ml-4" />
                                 </div>
                               </div>
                             )}
                           </div>
                         ) : (
-                          /* Display regular content with markdown-like formatting */
-                          <div className="prose max-w-none">
-                            <div className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
-                              {result.content}
-                            </div>
+                          /* Raw content display */
+                          <div className="bg-gray-900 p-4 rounded-lg">
+                            <pre className="text-green-400 text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+                              {viewMode === 'raw' && parsedContent 
+                                ? JSON.stringify(parsedContent, null, 2)
+                                : result.content
+                              }
+                            </pre>
                           </div>
                         )}
 
