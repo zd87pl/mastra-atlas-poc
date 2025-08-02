@@ -1,36 +1,52 @@
-# Text to SQL Template - WP Engine Atlas Deployment
+# Mastra Deep Research - WP Engine Atlas Deployment
 
-A Next.js application that converts natural language queries into SQL statements, designed for deployment on WP Engine Atlas.
+A comprehensive AI-powered research application built with [Mastra](https://mastra.ai) and deployed on WP Engine Atlas. This application performs deep research using multiple AI agents to provide comprehensive analysis and insights on any topic.
 
 ## 🚀 Features
 
-- **Natural Language to SQL Conversion**: Convert plain English descriptions into SQL queries
-- **Clean, Responsive UI**: Built with Next.js, TypeScript, and Tailwind CSS  
-- **Copy-to-Clipboard**: Easily copy generated SQL queries
-- **Example Templates**: Built-in examples to guide users
-- **WP Engine Atlas Ready**: Pre-configured for seamless Atlas deployment
+- **AI-Powered Research**: Multi-agent research system using Mastra framework
+- **Web Search Integration**: Real-time web search using Exa API
+- **Streaming Results**: Server-sent events for real-time progress updates
+- **PostgreSQL Database**: Cloud-hosted data persistence using Supabase
+- **Responsive Interface**: Modern UI built with Next.js and Tailwind CSS
 
 ## 📋 Prerequisites
 
 - **WP Engine Atlas Account**: Active Atlas account with Node.js support
+- **PostgreSQL Database**: Supabase or compatible PostgreSQL database
+- **OpenAI API Key**: For AI research capabilities
+- **Exa API Key**: For web search functionality
 - **Node.js**: Version 18.x or higher
 - **Git**: For version control and deployment
 
 ## 🏗️ Project Structure
 
 ```
-text-to-sql-template/
-├── .platform.app.yaml      # WP Engine Atlas configuration
-├── package.json             # Dependencies and scripts
-├── next.config.js          # Next.js configuration
-├── tailwind.config.js      # Tailwind CSS configuration
-├── tsconfig.json           # TypeScript configuration
+mastra-deep-research/
+├── .platform.app.yaml           # WP Engine Atlas configuration
+├── package.json                  # Dependencies and scripts
+├── next.config.js               # Next.js configuration
+├── mastra.config.ts             # Mastra framework configuration
+├── tailwind.config.js           # Tailwind CSS configuration
+├── tsconfig.json                # TypeScript configuration
+├── .env.example                 # Environment variables template
 ├── src/
-│   └── app/
-│       ├── layout.tsx      # Root layout component
-│       ├── page.tsx        # Main application page
-│       └── globals.css     # Global styles with Tailwind
-└── README.md               # This file
+│   ├── app/
+│   │   ├── layout.tsx           # Root layout component
+│   │   ├── page.tsx             # Main application page
+│   │   ├── globals.css          # Global styles with Tailwind
+│   │   └── api/
+│   │       └── research/
+│   │           └── route.ts     # Research API endpoint with streaming
+│   └── mastra/
+│       ├── index.ts             # Mastra configuration
+│       ├── agents/
+│       │   └── researchAgent.ts # AI research agent
+│       ├── workflows/
+│       │   └── researchWorkflow.ts # Research workflow
+│       └── tools/
+│           └── webSearchTool.ts # Web search integration
+└── README.md                    # This file
 ```
 
 ## 🛠️ Local Development Setup
@@ -38,7 +54,7 @@ text-to-sql-template/
 1. **Clone the repository**:
    ```bash
    git clone <your-repository-url>
-   cd text-to-sql-template
+   cd mastra-deep-research
    ```
 
 2. **Install dependencies**:
@@ -46,18 +62,36 @@ text-to-sql-template/
    npm install
    ```
 
-3. **Start development server**:
+3. **Set up environment variables**:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your actual API keys and database URL
+   ```
+
+4. **Required Environment Variables**:
+   ```bash
+   DATABASE_URL=postgresql://user:password@host:port/database?pgbouncer=true
+   OPENAI_API_KEY=your_openai_api_key
+   EXASEARCH_API_KEY=your_exa_api_key
+   ```
+
+5. **Initialize database**:
+   ```bash
+   npm run db:push
+   ```
+
+6. **Start development server**:
    ```bash
    npm run dev
    ```
 
-4. **Open your browser** and navigate to `http://localhost:3000`
+7. **Open your browser** and navigate to `http://localhost:3000`
 
 ## 🌐 WP Engine Atlas Deployment
 
 ### Method 1: Direct from Mastra.ai (Recommended)
 
-1. **Visit the Mastra.ai template page**: https://mastra.ai/templates/text-to-sql
+1. **Visit the Mastra.ai template page**: https://mastra.ai/templates/deep-research
 2. **Click "Deploy to WP Engine"** button
 3. **Connect your Atlas account** when prompted
 4. **Follow the deployment wizard** to complete setup
@@ -93,13 +127,13 @@ The `.platform.app.yaml` file configures:
 - **Runtime**: Node.js 18
 - **Build Process**: `npm ci` followed by `npm run build`
 - **Start Command**: `npm start`
-- **Static Assets**: Optimized caching for Next.js assets
+- **Extended Timeouts**: 300-second timeouts for long-running research operations
 - **Environment**: Production settings with PORT 8080
 
 ### Key Configuration Features:
 
 ```yaml
-name: text-to-sql-template
+name: mastra-deep-research
 type: nodejs:18
 
 build:
@@ -113,50 +147,76 @@ hooks:
 web:
   commands:
     start: "npm start"
+  
+  # Extended timeout configurations for AI research workflows
+  upstream:
+    socket_timeout: 300
+    timeout: 300
+  
+  locations:
+    "/api/research":
+      timeout: 300
+      keepalive_timeout: 300
 ```
 
 ## 🔧 Environment Variables
 
-The application works out-of-the-box with default settings. For customization:
+Configure the following environment variables in your Atlas dashboard:
 
+- **DATABASE_URL**: PostgreSQL connection string (use Supabase pooler format for best performance)
+- **OPENAI_API_KEY**: Your OpenAI API key for AI research capabilities
+- **EXASEARCH_API_KEY**: Your Exa API key for web search functionality
 - **NODE_ENV**: Set to `production` (configured automatically)
 - **PORT**: Set to `8080` (Atlas requirement)
 
+### Example Configuration:
+```bash
+DATABASE_URL=postgresql://postgres.xxxxx:password@aws-0-us-east-2.pooler.supabase.com:6543/postgres?pgbouncer=true
+OPENAI_API_KEY=sk-...
+EXASEARCH_API_KEY=...
+```
+
 ## 📝 Usage Instructions
 
-1. **Enter Natural Language Query**: Type your database question in plain English
-   - Example: "Show me all active users ordered by registration date"
+1. **Enter Research Question**: Type your research topic or question in the text area
+   - Example: "What are the latest developments in AI and machine learning in 2024?"
 
-2. **Generate SQL**: Click the "Generate SQL" button
+2. **Start Research**: Click the "Start Research" button to begin AI-powered analysis
 
-3. **Copy Result**: Use the copy button to copy the generated SQL query
+3. **Monitor Progress**: Watch real-time progress updates as the research proceeds
 
-4. **Try Examples**: Use the provided examples to understand the capabilities
+4. **Review Results**: Get comprehensive summaries with sources and detailed analysis
 
-## 🎯 Example Queries
+5. **Copy Results**: Use the copy button to copy research summaries for further use
 
-The application handles various query types:
+## 🎯 Example Research Topics
 
-- **User Queries**: "Show me all active users ordered by registration date"
-  - Generates: `SELECT * FROM users WHERE active = true ORDER BY created_at DESC;`
+The application handles various research topics:
 
-- **Aggregation**: "Get the total orders amount for each customer"  
-  - Generates: `SELECT customer_id, SUM(total_amount) as total_spent FROM orders GROUP BY customer_id ORDER BY total_spent DESC;`
-
-- **Counting**: "Count how many products are currently active"
-  - Generates: `SELECT COUNT(*) as total_count FROM products WHERE status = 'active';`
+- **Technology Trends**: "What are the latest developments in renewable energy technology?"
+- **Industry Analysis**: "How is artificial intelligence being used in healthcare in 2024?"
+- **Business Insights**: "What are the current trends in remote work and digital collaboration?"
+- **Scientific Research**: "What are the recent breakthroughs in quantum computing?"
 
 ## 🚨 Important Notes
 
 ### Atlas-Specific Requirements:
 - **Port Configuration**: Must use port 8080 (configured in `.platform.app.yaml`)
-- **Build Output**: Next.js static exports work best with Atlas
-- **Asset Handling**: Static assets are automatically optimized
+- **Extended Timeouts**: Configured for AI research workflows that may take several minutes
+- **Database Connection**: Uses PostgreSQL connection pooling for optimal performance
+- **Environment Variables**: All API keys must be configured in Atlas dashboard
 
 ### Performance Optimization:
-- **Caching**: Static assets cached for 1 week
-- **Compression**: Automatic gzip compression enabled
-- **CDN**: Leverages Atlas's global CDN
+- **Streaming API**: Server-sent events bypass 30-second Cloudflare timeout limits
+- **Connection Pooling**: PostgreSQL pooler connection format for database efficiency
+- **Caching**: Static assets cached for optimal performance
+- **CDN**: Leverages Atlas's global CDN for fast content delivery
+
+### AI Research Features:
+- **Multi-Agent System**: Uses specialized AI agents for different research tasks
+- **Web Search Integration**: Real-time web search with Exa API
+- **Progress Streaming**: Real-time updates during research workflows
+- **Database Persistence**: Research state and results stored in PostgreSQL
 
 ## 🔍 Troubleshooting
 
@@ -166,20 +226,33 @@ The application handles various query types:
    - Verify Node.js version compatibility
    - Check for TypeScript errors: `npm run lint`
    - Ensure all dependencies are in `package.json`
+   - Verify environment variables are set during build
 
-2. **Deployment Issues**:
-   - Confirm `.platform.app.yaml` is properly configured
-   - Check Atlas dashboard logs for detailed error messages
-   - Verify Git remote is correctly set
+2. **Database Connection Issues**:
+   - Use Supabase pooler connection format with `?pgbouncer=true`
+   - Verify DATABASE_URL in Atlas environment variables
+   - Check database credentials and network connectivity
 
-3. **Runtime Errors**:
+3. **API Key Issues**:
+   - Ensure OPENAI_API_KEY is valid and has sufficient credits
+   - Verify EXASEARCH_API_KEY is configured correctly
+   - Check API key permissions and rate limits
+
+4. **Timeout Issues**:
+   - Research workflows can take several minutes - this is normal
+   - Streaming API provides real-time updates during long operations
+   - Check Atlas logs if research fails to complete
+
+5. **Runtime Errors**:
    - Check that port 8080 is used in production
-   - Verify environment variables are set correctly
+   - Verify all environment variables are set correctly in Atlas dashboard
+   - Monitor Atlas application logs for detailed error information
 
 ### Getting Help:
 - **WP Engine Atlas Documentation**: https://wpengine.com/atlas/
+- **Mastra Documentation**: https://mastra.ai/docs
 - **Next.js Documentation**: https://nextjs.org/docs
-- **Mastra.ai Support**: https://mastra.ai/support
+- **Supabase Documentation**: https://supabase.com/docs
 
 ## 📦 Dependencies
 
@@ -189,23 +262,34 @@ The application handles various query types:
 - **TypeScript 5**: Type safety and development experience
 - **Tailwind CSS 3**: Utility-first CSS framework
 
+### Mastra Framework:
+- **@mastra/core**: Core Mastra framework for AI workflows
+- **@mastra/pg**: PostgreSQL integration for Mastra
+- **Mastra Agents**: AI agents for specialized research tasks
+
+### AI and Search:
+- **OpenAI**: GPT models for research and analysis
+- **Exa API**: Advanced web search capabilities
+- **PostgreSQL**: Database for workflow state and results
+
 ### Icons and UI:
 - **Lucide React**: Beautiful, customizable icons
-- **Axios**: HTTP client for API requests (future AI integration)
 
-## 🔮 Future Enhancements
+## 🔮 Architecture Overview
 
-This template provides a foundation for:
-- **AI Integration**: Connect to OpenAI, Anthropic, or other AI services
-- **Database Connections**: Add real database connectivity
-- **Query Validation**: Implement SQL syntax validation
-- **User Authentication**: Add user accounts and query history
-- **Export Features**: Allow exporting queries to various formats
+This application uses a sophisticated AI architecture:
+
+- **Research Agent**: Specialized AI agent for conducting comprehensive research
+- **Web Search Tool**: Integration with Exa API for real-time web search
+- **Research Workflow**: Multi-step workflow with suspend/resume capabilities
+- **PostgreSQL Store**: Persistent storage for workflow state and research results
+- **Streaming API**: Server-sent events for real-time progress updates
+- **Timeout Management**: Extended configurations for long-running AI operations
 
 ## 📄 License
 
-This project is based on the Mastra.ai text-to-SQL template and is suitable for both personal and commercial use.
+This project is based on the Mastra.ai deep research template and is suitable for both personal and commercial use.
 
 ---
 
-**Ready to deploy?** Visit [Mastra.ai](https://mastra.ai/templates/text-to-sql) and click "Deploy to WP Engine" for the fastest setup!
+**Ready to deploy?** Visit [Mastra.ai](https://mastra.ai/templates/deep-research) and click "Deploy to WP Engine" for the fastest setup!

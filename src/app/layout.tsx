@@ -5,8 +5,8 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Text to SQL - Mastra Template',
-  description: 'Convert natural language to SQL queries using AI',
+  title: 'Mastra Deep Research',
+  description: 'AI-powered comprehensive research with real-time analysis and insights',
 }
 
 export default function RootLayout({
