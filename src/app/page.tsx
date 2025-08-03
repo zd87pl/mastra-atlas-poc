@@ -429,25 +429,30 @@ export default function Home() {
 
                 {/* Results Content */}
                 <div className="p-6 space-y-6">
-                  {researchResult.results.map((result, index) => {
-                    const parsedContent = extractJsonFromContent(result.content);
-
-                    return (
-                      <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                        <div className="flex items-start justify-between mb-3">
-                          <h4 className="font-semibold text-gray-900 text-lg">{result.title}</h4>
-                          {result.url && result.url !== '#comprehensive-research' && !result.url.startsWith('#research-step') && (
-                            <a
-                              href={result.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 ml-4 flex-shrink-0 flex items-center gap-1"
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                              <span className="text-sm">View Source</span>
-                            </a>
-                          )}
-                        </div>
+                  {researchResult.results
+                    .filter(result => {
+                      // Only show comprehensive research analysis, skip individual search steps
+                      return result.url === '#comprehensive-research';
+                    })
+                    .map((result, index) => {
+                      const parsedContent = extractJsonFromContent(result.content);
+  
+                      return (
+                        <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                          <div className="flex items-start justify-between mb-3">
+                            <h4 className="font-semibold text-gray-900 text-lg">{result.title}</h4>
+                            {result.url && result.url !== '#comprehensive-research' && !result.url.startsWith('#research-step') && (
+                              <a
+                                href={result.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 ml-4 flex-shrink-0 flex items-center gap-1"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                                <span className="text-sm">View Source</span>
+                              </a>
+                            )}
+                          </div>
 
                         {/* Display content based on view mode */}
                         {viewMode === 'formatted' && parsedContent ? (
@@ -507,7 +512,8 @@ export default function Home() {
                                         </a>
                                       )}
                                     </div>
-                                  ))}
+                                  );
+                                })}
                                 </div>
                               </div>
                             )}
