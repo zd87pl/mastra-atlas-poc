@@ -282,18 +282,8 @@ export async function POST(request: NextRequest) {
             }
           ];
           
-          // If we have step-by-step data, add individual results
-          if (result?.steps && Array.isArray(result.steps)) {
-            result.steps.forEach((step, index) => {
-              if (step.text && step.text.length > 100) {
-                searchResults.push({
-                  title: `Research Step ${index + 1}`,
-                  content: step.text,
-                  url: `#research-step-${index + 1}`
-                });
-              }
-            });
-          }
+          // Individual research steps removed to prevent duplicate display
+          // Only show the comprehensive analysis to avoid redundancy
 
           // Send final results
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({

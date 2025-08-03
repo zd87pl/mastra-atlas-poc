@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, Send, Copy, CheckCircle, FileText, ExternalLink, Clock, Activity, CheckCircle2, AlertCircle, Eye, Code, MessageSquare } from 'lucide-react'
+import { Search, Send, Copy, CheckCircle, FileText, ExternalLink, Clock, Activity, CheckCircle2, AlertCircle, Eye, Code, MessageSquare, BarChart3, LineChart, PieChart } from 'lucide-react'
+import { BarChart, Bar, LineChart as RechartsLineChart, Line, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 interface ResearchResult {
   query: string
@@ -24,6 +25,12 @@ interface LogEntry {
   step?: number
   totalSteps?: number
   elapsed?: number
+}
+
+interface ChartData {
+  name: string
+  value: number
+  label?: string
 }
 
 export default function Home() {
@@ -150,6 +157,146 @@ export default function Home() {
       console.error('Failed to copy text: ', err)
     }
   }
+
+  // Data visualization functions
+  const detectVisualizableData = (content: string): { data: ChartData[], type: 'bar' | 'line' | 'pie' } | null => {
+    const chartData: ChartData[] = [];
+    
+    // Pattern 1: Percentage data (good for pie charts)
+    const percentageRegex = /(\w+[^.\n]*?):\s*(\d+(?:\.\d+)?)%/gi;
+    let match;
+    while ((match = percentageRegex.exec(content)) !== null) {
+      const value = parseFloat(match[2]);
+      if (value <= 100) { // Valid percentage
+        chartData.push({
+          name: match[1].trim(),
+          value: value,
+          label: `${value}%`
+        });
+      }
+    }
+    
+    // Pattern 2: Labeled numbers (general numerical data)
+    if (chartData.length === 0) {
+      const numbersRegex = /(\w+[^:\n]*?):\s*[\$€£¥]?(\d+(?:\.\d+)?)\s*[KMBkmb]?/gi;
+      while ((match = numbersRegex.exec(content)) !== null) {
+        let value = parseFloat(match[2]);
+        const suffix = match[0].slice(-1).toLowerCase();
+        
+        // Handle K, M, B suffixes
+        if (suffix === 'k') value *= 1000;
+        else if (suffix === 'm') value *= 1000000;
+        else if (suffix === 'b') value *= 1000000000;
+        
+        chartData.push({
+          name: match[1].trim(),
+          value: value,
+          label: match[2] + (suffix.match(/[kmb]/) ? suffix.toUpperCase() : '')
+        });
+      }
+    }
+    
+    // Pattern 3: Year-based data (good for line charts)
+    if (chartData.length === 0) {
+      const yearRegex = /(?:in\s+)?(\d{4})[,\s]+.*?[\$€£¥]?(\d+(?:\.\d+)?)\s*[KMBkmb]?/gi;
+      while ((match = yearRegex.exec(content)) !== null) {
+        let value = parseFloat(match[2]);
+        const suffix = match[0].slice(-1).toLowerCase();
+        
+        if (suffix === 'k') value *= 1000;
+        else if (suffix === 'm') value *= 1000000;
+        else if (suffix === 'b') value *= 1000000000;
+        
+        chartData.push({
+          name: match[1],
+          value: value,
+          label: match[2] + (suffix.match(/[kmb]/) ? suffix.toUpperCase() : '')
+        });
+      }
+    }
+    
+    // Filter out duplicates and invalid data
+    const uniqueData = chartData.filter((item, index, self) =>
+      index === self.findIndex(t => t.name === item.name) &&
+      !isNaN(item.value) &&
+      item.value > 0
+    );
+    
+    if (uniqueData.length < 2) return null;
+    
+    // Determine chart type based on data characteristics
+    const hasPercentages = uniqueData.some(item => item.label?.includes('%'));
+    const hasYears = uniqueData.every(item => /^\d{4}$/.test(item.name));
+    const totalPercentage = uniqueData.reduce((sum, item) =>
+      item.label?.includes('%') ? sum + item.value : sum, 0
+    );
+    
+    if (hasPercentages && totalPercentage <= 100) {
+      return { data: uniqueData, type: 'pie' };
+    } else if (hasYears) {
+      return { data: uniqueData.sort((a, b) => parseInt(a.name) - parseInt(b.name)), type: 'line' };
+    } else {
+      return { data: uniqueData, type: 'bar' };
+    }
+  };
+
+  const renderChart = (chartInfo: { data: ChartData[], type: 'bar' | 'line' | 'pie' }) => {
+    const { data, type } = chartInfo;
+    const colors = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#F97316', '#06B6D4', '#84CC16'];
+    
+    const chartProps = {
+      width: 400,
+      height: 300,
+      data: data,
+      margin: { top: 5, right: 30, left: 20, bottom: 5 }
+    };
+    
+    switch (type) {
+      case 'pie':
+        return (
+          <ResponsiveContainer width="100%" height={300}>
+            <RechartsPieChart>
+              <Pie data={data} cx="50%" cy="50%" outerRadius={80} fill="#8884d8" dataKey="value">
+                {data.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value: any, name: string) => [`${value}%`, name]} />
+              <Legend />
+            </RechartsPieChart>
+          </ResponsiveContainer>
+        );
+      
+      case 'line':
+        return (
+          <ResponsiveContainer width="100%" height={300}>
+            <RechartsLineChart {...chartProps}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="value" stroke="#3B82F6" strokeWidth={2} />
+            </RechartsLineChart>
+          </ResponsiveContainer>
+        );
+      
+      case 'bar':
+      default:
+        return (
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart {...chartProps}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="value" fill="#3B82F6" />
+            </BarChart>
+          </ResponsiveContainer>
+        );
+    }
+  };
 
   // Enhanced JSON extraction function
   const extractJsonFromContent = (content: string) => {
@@ -512,8 +659,8 @@ export default function Home() {
                                         </a>
                                       )}
                                     </div>
-                                  );
-                                })}
+                                  ))
+                                }
                                 </div>
                               </div>
                             )}
@@ -571,17 +718,17 @@ export default function Home() {
                                           Progress: {parsedContent.completedQueries.length} of {parsedContent.queries?.length || 'N/A'} queries completed
                                         </h6>
                                         <div className="w-full bg-indigo-200 rounded-full h-3">
-                                          <div 
+                                          <div
                                             className="bg-indigo-600 h-3 rounded-full transition-all duration-300"
-                                            style={{ 
-                                              width: parsedContent.queries ? 
-                                                `${Math.round((parsedContent.completedQueries.length / parsedContent.queries.length) * 100)}%` : 
-                                                '100%' 
+                                            style={{
+                                              width: parsedContent.queries ?
+                                                `${Math.round((parsedContent.completedQueries.length / parsedContent.queries.length) * 100)}%` :
+                                                '100%'
                                             }}
                                           ></div>
                                         </div>
                                         <div className="text-xs text-indigo-700 mt-1">
-                                          {parsedContent.queries ? 
+                                          {parsedContent.queries ?
                                             `${Math.round((parsedContent.completedQueries.length / parsedContent.queries.length) * 100)}% complete` :
                                             'Complete'
                                           }
@@ -594,6 +741,29 @@ export default function Home() {
                                 </div>
                               </div>
                             )}
+
+                            {/* Data Visualization */}
+                            {(() => {
+                              const chartInfo = detectVisualizableData(result.content);
+                              if (!chartInfo) return null;
+                              
+                              return (
+                                <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
+                                  <h5 className="font-medium text-amber-900 mb-3 flex items-center gap-2">
+                                    {chartInfo.type === 'pie' && <PieChart className="h-4 w-4" />}
+                                    {chartInfo.type === 'line' && <LineChart className="h-4 w-4" />}
+                                    {chartInfo.type === 'bar' && <BarChart3 className="h-4 w-4" />}
+                                    Data Visualization ({chartInfo.type.charAt(0).toUpperCase() + chartInfo.type.slice(1)} Chart)
+                                  </h5>
+                                  <div className="bg-white p-4 rounded-lg border border-amber-200">
+                                    {renderChart(chartInfo)}
+                                  </div>
+                                  <div className="mt-2 text-xs text-amber-700">
+                                    Detected {chartInfo.data.length} data points for visualization
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </div>
                         ) : (
                           /* Raw content display */
